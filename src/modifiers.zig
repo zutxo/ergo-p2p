@@ -1242,3 +1242,120 @@ test "input serialization round trip" {
     try std.testing.expectEqual([_]u8{0xDD} ** 32, input.box_id);
     try std.testing.expectEqual(@as(usize, 5), input.spending_proof.proof_bytes.len);
 }
+
+test "header rejects invalid version 0" {
+    const allocator = std.testing.allocator;
+
+    var buf: [256]u8 = undefined;
+    var fbs_write = std.io.fixedBufferStream(&buf);
+    var w = vlq.writer(fbs_write.writer());
+
+    // Version 0 (invalid)
+    try w.writeByte(0);
+    // Fill rest with dummy data
+    try w.write(&[_]u8{0x00} ** 200);
+
+    const written = fbs_write.getWritten();
+    const result = Header.fromBytes(written, allocator);
+    try std.testing.expectError(error.InvalidVersion, result);
+}
+
+test "header rejects invalid version 4" {
+    const allocator = std.testing.allocator;
+
+    var buf: [256]u8 = undefined;
+    var fbs_write = std.io.fixedBufferStream(&buf);
+    var w = vlq.writer(fbs_write.writer());
+
+    // Version 4 (invalid - only 1-3 supported)
+    try w.writeByte(4);
+    // Fill rest with dummy data
+    try w.write(&[_]u8{0x00} ** 200);
+
+    const written = fbs_write.getWritten();
+    const result = Header.fromBytes(written, allocator);
+    try std.testing.expectError(error.InvalidVersion, result);
+}
+
+test "header rejects zero timestamp" {
+    const allocator = std.testing.allocator;
+
+    var buf: [256]u8 = undefined;
+    var fbs_write = std.io.fixedBufferStream(&buf);
+    var w = vlq.writer(fbs_write.writer());
+
+    // Version 3
+    try w.writeByte(3);
+    // Parent ID (32 bytes)
+    try w.write(&[_]u8{0x01} ** 32);
+    // AD proofs root (32 bytes)
+    try w.write(&[_]u8{0x02} ** 32);
+    // Transactions root (32 bytes)
+    try w.write(&[_]u8{0x03} ** 32);
+    // State root (33 bytes)
+    try w.write(&[_]u8{0x04} ** 33);
+    // Timestamp = 0 (invalid)
+    try w.writeUnsignedLong(0);
+    // Extension hash (32 bytes)
+    try w.write(&[_]u8{0x05} ** 32);
+    // nBits (4 bytes)
+    try w.write(&[_]u8{ 0x1a, 0x1e, 0x20, 0x30 });
+    // Height
+    try w.writeUnsignedInt(1234567);
+    // Votes (3 bytes)
+    try w.write(&[_]u8{ 0x00, 0x00, 0x00 });
+    // Unparsed bytes length (v2+)
+    try w.writeByte(0);
+    // PoW solution
+    try w.write(&[_]u8{0x06} ** 33); // miner_pk
+    try w.write(&[_]u8{0x07} ** 8); // nonce
+
+    const written = fbs_write.getWritten();
+    const result = Header.fromBytes(written, allocator);
+    try std.testing.expectError(error.InvalidTimestamp, result);
+}
+
+test "autolykos solution rejects invalid version 0" {
+    const allocator = std.testing.allocator;
+
+    var data: [33 + 8]u8 = undefined;
+    @memset(&data, 0xAB);
+
+    var fbs = std.io.fixedBufferStream(&data);
+    var r = vlq.reader(fbs.reader());
+
+    const result = AutolykosSolution.deserialize(&r, 0, allocator);
+    try std.testing.expectError(error.InvalidVersion, result);
+}
+
+test "autolykos solution rejects invalid version 4" {
+    const allocator = std.testing.allocator;
+
+    var data: [33 + 8]u8 = undefined;
+    @memset(&data, 0xAB);
+
+    var fbs = std.io.fixedBufferStream(&data);
+    var r = vlq.reader(fbs.reader());
+
+    const result = AutolykosSolution.deserialize(&r, 4, allocator);
+    try std.testing.expectError(error.InvalidVersion, result);
+}
+
+test "transaction rejects zero inputs" {
+    const allocator = std.testing.allocator;
+
+    var buf: [64]u8 = undefined;
+    var fbs_write = std.io.fixedBufferStream(&buf);
+    var w = vlq.writer(fbs_write.writer());
+
+    // 0 inputs (invalid)
+    try w.writeUnsignedShort(0);
+    // 0 data inputs
+    try w.writeUnsignedShort(0);
+    // 0 outputs
+    try w.writeUnsignedShort(0);
+
+    const written = fbs_write.getWritten();
+    const result = Transaction.fromBytes(written, allocator);
+    try std.testing.expectError(error.InvalidTransaction, result);
+}
