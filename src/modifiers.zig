@@ -642,8 +642,8 @@ pub const Transaction = struct {
     pub fn deserialize(r: anytype, allocator: std.mem.Allocator) !Transaction {
         // Input count
         const input_count = try r.readUnsignedShort();
-        // Precondition: Transaction must have at least one input.
-        std.debug.assert(input_count >= 1);
+        // Transaction must have at least one input
+        if (input_count < 1) return error.InvalidTransaction;
         const inputs = try allocator.alloc(Input, input_count);
         errdefer allocator.free(inputs);
 
