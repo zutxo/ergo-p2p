@@ -80,9 +80,8 @@ pub const AutolykosSolution = struct {
     /// For v1 headers: full solution with one_time_pk and distance
     /// For v2+ headers: compact solution with just miner_pk and nonce
     pub fn deserialize(r: anytype, header_version: u8, allocator: std.mem.Allocator) !AutolykosSolution {
-        // Precondition: Version must be a valid protocol version.
-        std.debug.assert(header_version >= 1);
-        std.debug.assert(header_version <= 3);
+        // Version must be a valid protocol version (1-3).
+        if (header_version < 1 or header_version > 3) return error.InvalidVersion;
 
         var miner_pk: [33]u8 = undefined;
         try r.readFully(&miner_pk);
@@ -260,9 +259,8 @@ pub const Header = struct {
     pub fn deserialize(r: anytype, allocator: std.mem.Allocator) !Header {
         // Version
         const version = try r.readByte();
-        // Precondition: Version must be a valid protocol version (1-3).
-        std.debug.assert(version >= 1);
-        std.debug.assert(version <= 3);
+        // Version must be a valid protocol version (1-3).
+        if (version < 1 or version > 3) return error.InvalidVersion;
 
         // Parent ID
         var parent_id: [32]u8 = undefined;
@@ -317,7 +315,10 @@ pub const Header = struct {
             sol.deinit();
         }
 
-        const header = Header{
+        // Timestamp must be positive (valid Unix time).
+        if (timestamp == 0) return error.InvalidTimestamp;
+
+        return Header{
             .version = version,
             .parent_id = parent_id,
             .ad_proofs_root = ad_proofs_root,
@@ -332,10 +333,6 @@ pub const Header = struct {
             .pow_solution = pow_solution,
             .allocator = allocator,
         };
-
-        // Postcondition: Timestamp must be positive (valid Unix time).
-        std.debug.assert(header.timestamp > 0);
-        return header;
     }
 
     /// Deserializes a Header from raw bytes.
