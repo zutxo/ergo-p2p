@@ -48,8 +48,8 @@ The executable will be at `zig-out/bin/ergo-p2p`.
 ## Quick Start
 
 ```bash
-# Start interactive explorer (default command)
-./zig-out/bin/ergo-p2p
+# Start interactive explorer
+./zig-out/bin/ergo-p2p explore
 
 # Discover peers on mainnet
 ./zig-out/bin/ergo-p2p discover
@@ -80,7 +80,7 @@ USAGE:
     ergo-p2p [OPTIONS] [COMMAND]
 
 COMMANDS:
-    explore     Interactive network explorer (default)
+    explore     Interactive network explorer
     monitor     Monitor events from a single node
     discover    Discover peers from bootstrap nodes
     relay       Connect to multiple peers and monitor
@@ -245,13 +245,12 @@ Monitoring messages from all peers...
 
 #### explore
 
-Interactive network explorer with REPL interface. This is the **default command** when no command is specified.
+Interactive network explorer with REPL interface.
 
 **Usage:**
 ```bash
-ergo-p2p                             # Start explorer (default)
-ergo-p2p explore                     # Explicit explorer
-ergo-p2p explore -p 1.2.3.4:9030     # Start with peer connection
+ergo-p2p explore                     # Start explorer
+ergo-p2p explore -p 1.2.3.4:9030     # Start with peer in known list
 ergo-p2p explore -n testnet          # Testnet explorer
 ```
 
